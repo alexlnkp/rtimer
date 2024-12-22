@@ -3,7 +3,7 @@
 
 #define STR_OR_DEFAULT(str, def) ((str) ? (str) : (def))
 
-#define NUM_EXAMPLES 1
+#define NUM_EXAMPLES 2
 
 #define DEFAULT_CC "gcc"
 

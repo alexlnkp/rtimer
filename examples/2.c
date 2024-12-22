@@ -32,11 +32,16 @@ int main(void) {
         .type = 0
     };
 
-    int timer1id = AddTimer(&td, 1.0f, TimerCallback1, &ch, TF_DEFAULT, false);
+    int timer1id = AddTimer(&td, 1.0f, TimerCallback1, &ch, TF_TIMEBOMB, true);
 
     while (!WindowShouldClose()) {
         float deltaTime = GetFrameTime();
         UpdateTimers(&td, deltaTime);
+
+        if (IsKeyPressed(KEY_R)) {
+            ch.col = BLACK;
+            ResetTimer(&td, timer1id, 1.0f, TF_TIMEBOMB, true);
+        }
 
         if (IsKeyPressed(KEY_SPACE)) {
             if (IsTimerPaused(&td, timer1id)) {

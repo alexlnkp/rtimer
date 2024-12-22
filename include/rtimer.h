@@ -26,6 +26,10 @@ extern "C" {
     #define RT_REALLOC realloc
 #endif
 
+#if !defined(bool)
+    #include <stdbool.h>
+#endif
+
 #ifndef TIMERDISPATCH_REALLOC_SAFENET
     /* how much more Timers to allocate per realloc */
     #define TIMERDISPATCH_REALLOC_SAFENET 1
@@ -55,6 +59,8 @@ enum TimerFlags {
 
 struct Timer {
     enum TimerFlags tf;     /* timer flags (sync/async...)     */
+    bool paused;            /* whether this timer is paused    */
+    bool active;            /* whether this timer is active    */
     float duration;         /* timer duration                  */
     float elapsed;          /* elapsed time                    */
     TimerCallback callback; /* callback function               */
@@ -84,27 +90,36 @@ TimerDispatch InitTimerDispatch(MaxTimerCount max_num_timers) {
 }
 
 
-void AddTimer(TimerDispatch* td, float duration, TimerCallback callback, void* data, enum TimerFlags timer_flags) {
+int AddTimer(TimerDispatch* td, float duration, TimerCallback callback, void* data, enum TimerFlags timer_flags, bool paused_by_default) {
     if (td->num_timers >= td->max_num_timers) {
 #if defined (RT_NO_REALLOC)
         RT_ERROR("!!! td->num_timers > td->max_num_timers !!! ");
-        return;
+        return -1;
 #else
         td->max_num_timers = (td->num_timers + TIMERDISPATCH_REALLOC_SAFENET);
         td->timers = (Timer*)RT_REALLOC(td->timers, sizeof(Timer) * td->max_num_timers);
 #endif
     }
 
+    td->timers[td->num_timers].paused = paused_by_default;
+    td->timers[td->num_timers].active = true;
     td->timers[td->num_timers].tf = timer_flags;
     td->timers[td->num_timers].duration = duration;
     td->timers[td->num_timers].elapsed = 0.0f;
     td->timers[td->num_timers].callback = callback;
     td->timers[td->num_timers].data = data;
-    td->num_timers++;
+    return td->num_timers++;
 }
 
 
 void RemoveTimer(TimerDispatch *td, int index) {
+    if (index < 0 || index >= td->num_timers) return;
+    td->timers[index].active = false;
+}
+
+
+/* !! WARNING: shifts timer IDs in the td->timers array !! */
+void RippleCutTimer(TimerDispatch *td, int index) {
     if (index < 0 || index >= td->num_timers) return;
     for (int i = index; i < td->num_timers - 1; i++) {
         td->timers[i] = td->timers[i + 1];
@@ -113,8 +128,17 @@ void RemoveTimer(TimerDispatch *td, int index) {
 }
 
 
+/* returns the current timer_id adjusted to ripplecut timer array */
+int GetTimerIDAfterRippleCut(int current_timer_id, int cut_id) {
+    if (current_timer_id < cut_id) return current_timer_id;
+    else return current_timer_id - 1;
+}
+
+
 void UpdateTimers(TimerDispatch *td, float deltaTime) {
     for (int i = 0; i < td->num_timers; ++i) {
+        if (td->timers[i].paused || !td->timers[i].active) continue;
+
         td->timers[i].elapsed += deltaTime;
         if (td->timers[i].elapsed < td->timers[i].duration) continue;
 
@@ -123,6 +147,33 @@ void UpdateTimers(TimerDispatch *td, float deltaTime) {
         if (td->timers[i].tf & TF_TIMEBOMB) RemoveTimer(td, i);
     }
 }
+
+
+bool IsTimerPaused(TimerDispatch *td, int timer_id) {
+    return td->timers[timer_id].paused;
+}
+
+
+void PauseTimer(TimerDispatch *td, int timer_id) {
+    td->timers[timer_id].paused = true;
+}
+
+
+void ResumeTimer(TimerDispatch *td, int timer_id) {
+    td->timers[timer_id].paused = false;
+}
+
+
+void ResetTimer(TimerDispatch *td, int timer_id, float duration, enum TimerFlags timer_flags, bool paused_by_default) {
+    if (timer_id < 0 || timer_id >= td->num_timers) return;
+
+    td->timers[timer_id].paused = paused_by_default;
+    td->timers[timer_id].active = true;
+    td->timers[timer_id].tf = timer_flags;
+    td->timers[timer_id].duration = duration;
+    td->timers[timer_id].elapsed = 0.0f;
+}
+
 
 #endif /* RT_IMPLEMENTATION */
 
