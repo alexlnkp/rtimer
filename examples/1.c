@@ -3,36 +3,43 @@
 #define RT_IMPLEMENTATION
 #include "rtimer.h"
 
-void TimerCallback1(void* data) {
-    int* intData = (int*)data;
-    TraceLog(LOG_INFO, "Timer 1 expired! Data: %d", *intData);
-}
+typedef struct ColorHandler {
+    Color col;
+    int type;
+} ColorHandler;
 
-void TimerCallback2(void* data) {
-    const char* strData = (const char*)data;
-    TraceLog(LOG_INFO, "Timer 2 expired! Message: %s", strData);
+void TimerCallback1(void* data) {
+    ColorHandler *handler = data;
+    TraceLog(LOG_INFO, "Fired timer1! type: %d, color: {%u, %u, %u, %u}",
+        handler->type, handler->col.r, handler->col.g, handler->col.b, handler->col.a);
+    if (handler->type == 1) {
+        handler->col = (Color) { 0, 0, 255, 255 };
+        handler->type = 0;
+    } else {
+        handler->col = (Color) { 255, 0, 0, 255 };
+        handler->type = 1;
+    }
 }
 
 int main(void) {
     InitWindow(800, 600, "Timer Example");
     SetTargetFPS(60);
 
-    TimerDispatch td = InitTimerDispatch(0);
+    TimerDispatch td = InitTimerDispatch(1);
 
-    int timer1Data = 42;
-    const char* timer2Data = "This timer fires only once!";
-    const char* timer3Data = "This timer fires only once as well!";
+    ColorHandler ch = {
+        .col = BLACK,
+        .type = 0
+    };
 
-    AddTimer(&td, 1.0f, TimerCallback1, &timer1Data, TF_DEFAULT);
-    AddTimer(&td, 1.5f, TimerCallback2, (void*)timer2Data, TF_DEFAULT | TF_TIMEBOMB);
-    AddTimer(&td, 2.5f, TimerCallback2, (void*)timer3Data, TF_DEFAULT | TF_TIMEBOMB);
+    AddTimer(&td, 1.0f, TimerCallback1, &ch, TF_DEFAULT);
 
     while (!WindowShouldClose()) {
         float deltaTime = GetFrameTime();
         UpdateTimers(&td, deltaTime);
 
         BeginDrawing();
-        ClearBackground(RAYWHITE);
+        ClearBackground(ch.col);
         DrawText("Check the console for timer messages!", 10, 10, 20, DARKGRAY);
         EndDrawing();
     }
