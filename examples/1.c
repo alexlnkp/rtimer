@@ -1,8 +1,5 @@
 #include <raylib.h>
 
-#define RT_MALLOC MemAlloc
-#define RT_REALLOC MemRealloc
-
 #define RT_IMPLEMENTATION
 #include "rtimer.h"
 
@@ -17,17 +14,18 @@ void TimerCallback2(void* data) {
 }
 
 int main(void) {
-    InitWindow(800, 600, "Raylib Timer Example");
+    InitWindow(800, 600, "Timer Example");
     SetTargetFPS(60);
 
-    TimerDispatch td = InitTimerDispatch(1);
+    TimerDispatch td = InitTimerDispatch(0);
 
     int timer1Data = 42;
-    const char* timer2Data = "Hello, World!";
+    const char* timer2Data = "This timer fires only once!";
+    const char* timer3Data = "This timer fires only once as well!";
 
     AddTimer(&td, 1.0f, TimerCallback1, &timer1Data, TF_DEFAULT);
     AddTimer(&td, 1.5f, TimerCallback2, (void*)timer2Data, TF_DEFAULT | TF_TIMEBOMB);
-    AddTimer(&td, 2.5f, TimerCallback2, (void*)timer2Data, TF_DEFAULT | TF_TIMEBOMB);
+    AddTimer(&td, 2.5f, TimerCallback2, (void*)timer3Data, TF_DEFAULT | TF_TIMEBOMB);
 
     while (!WindowShouldClose()) {
         float deltaTime = GetFrameTime();

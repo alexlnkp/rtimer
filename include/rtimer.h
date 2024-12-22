@@ -13,7 +13,8 @@ extern "C" {
     #if defined(TraceLog)
         #define RT_ERROR(x) TraceLog(LOG_ERROR, "%s: %s:%d", x, __FILE__, __LINE__);
     #else
-        #define RT_ERROR(x) perror("%s: %s:%d", x, __FILE__, __LINE__);
+        #include <stdio.h>
+        #define RT_ERROR(x) fprintf(stderr, "%s: %s:%d\n", x, __FILE__, __LINE__);
     #endif
 #endif
 
@@ -73,19 +74,20 @@ struct TimerDispatch {
 
 TimerDispatch InitTimerDispatch(MaxTimerCount max_num_timers) {
     TimerDispatch res = {
-        .timers = (Timer*)RT_MALLOC(sizeof(Timer) * (max_num_timers + 1)),
         .num_timers = 0,
-        .max_num_timers = max_num_timers,
+        .max_num_timers = max_num_timers + 1,
     };
+
+    res.timers = (Timer*)RT_MALLOC(sizeof(Timer) * res.max_num_timers);
 
     return res;
 }
 
 
 void AddTimer(TimerDispatch* td, float duration, TimerCallback callback, void* data, enum TimerFlags timer_flags) {
-    if (td->num_timers > td->max_num_timers) {
+    if (td->num_timers >= td->max_num_timers) {
 #if defined (RT_NO_REALLOC)
-        RT_ERROR("td->num_timers > td->max_num_timers!");
+        RT_ERROR("!!! td->num_timers > td->max_num_timers !!! ");
         return;
 #else
         td->max_num_timers = (td->num_timers + TIMERDISPATCH_REALLOC_SAFENET);
