@@ -5,16 +5,16 @@
 extern "C" {
 #endif
 
-#if !defined(RT_MALLOC) || !defined(RT_REALLOC) || !defined(TraceLog)
+#if !defined(RT_MALLOC) || !defined(RT_REALLOC) || !defined(RAYLIB_H)
     #include <stdlib.h>
 #endif
 
 #ifndef RT_ERROR
-    #if defined(TraceLog)
-        #define RT_ERROR(x) TraceLog(LOG_ERROR, "%s: %s:%d", x, __FILE__, __LINE__);
+    #if defined(RAYLIB_H)
+        #define RT_ERROR(fmt, ...) TraceLog(LOG_ERROR, "%s:%d - " fmt, __FILE__, __LINE__, __VA_ARGS__);
     #else
         #include <stdio.h>
-        #define RT_ERROR(x) fprintf(stderr, "%s: %s:%d\n", x, __FILE__, __LINE__);
+        #define RT_ERROR(fmt, ...) fprintf(stderr, "%s:%d; " fmt, __FILE__, __LINE__, __VA_ARGS__);
     #endif
 #endif
 
@@ -53,12 +53,12 @@ typedef struct TimerDispatch TimerDispatch;
 /* ------------ structs ------------ */
 enum TimerFlags {
     TF_DEFAULT  = 0,      /* synchronous, continuous */
-    TF_ASYNC    = 1 << 0, /* async                   */
-    TF_TIMEBOMB = 1 << 1  /* destroyed after firing  */
+    TF_TIMEBOMB = 1 << 0, /* destroyed after firing  */
+ /* TF_ASYNC    = 1 << 1, */ /* async (WIP)             */
 };
 
 struct Timer {
-    enum TimerFlags tf;     /* timer flags (sync/async...)     */
+    enum TimerFlags tf;     /* bitwise timer flags             */
     bool paused;            /* whether this timer is paused    */
     bool active;            /* whether this timer is active    */
     float duration;         /* timer duration                  */
@@ -93,7 +93,7 @@ TimerDispatch InitTimerDispatch(MaxTimerCount max_num_timers) {
 int AddTimer(TimerDispatch* td, float duration, TimerCallback callback, void* data, enum TimerFlags timer_flags, bool paused_by_default) {
     if (td->num_timers >= td->max_num_timers) {
 #if defined (RT_NO_REALLOC)
-        RT_ERROR("!!! td->num_timers > td->max_num_timers !!! ");
+        RT_ERROR("couldn't add timer (%f; %d; %d), td->num_timers >= td->max_num_timers", duration, timer_flags, paused_by_default);
         return -1;
 #else
         td->max_num_timers = (td->num_timers + TIMERDISPATCH_REALLOC_SAFENET);
